@@ -1,0 +1,27 @@
+# Arduino / arduino-cli build output
+/build/
+*.bin
+*.elf
+*.hex
+*.map
+*.d
+*.o
+*.a
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Native unit-test artifacts
+/kf_test
+kf_test.exe
+*.exe
+*.out
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

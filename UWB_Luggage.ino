@@ -6,9 +6,11 @@
 #include <math.h>
 #include <strings.h>
 
-#include "BLE_Interface.h"
-#include "KalmanFilter_UWB.h"
-#include "MotorControl_PID.h"
+// Headers live in src/. Arduino does not add src/ to the include path, so the
+// "src/" prefix is required for the main sketch to compile.
+#include "src/BLE_Interface.h"
+#include "src/KalmanFilter_UWB.h"
+#include "src/MotorControl_PID.h"
 
 static void onNavCmd(const char *cmd) {
   if (strcasecmp(cmd, "follow") == 0) {

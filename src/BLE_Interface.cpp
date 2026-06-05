@@ -32,7 +32,9 @@ class ServerCallbacks : public BLEServerCallbacks {
 
 class NavCmdCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *c) {
-    String v = c->getValue();
+    // getValue() returns String on ESP32 core 3.x and std::string on 2.x;
+    // `auto` keeps this compiling on both (both expose length()/c_str()).
+    auto v = c->getValue();
     if (v.length() == 0) return;
     // keep it simple: plain text like "follow" or "stop"
     char buf[32];

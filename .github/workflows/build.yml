@@ -1,0 +1,42 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  esp32-compile:
+    name: Compile sketch (ESP32)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up arduino-cli
+        uses: arduino/setup-arduino-cli@v1
+
+      - name: Install ESP32 core
+        run: |
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+
+      - name: Compile for ESP32 Dev Module
+        run: arduino-cli compile --fqbn esp32:esp32:esp32 .
+
+  kalman-unit-test:
+    name: Kalman filter unit test (host)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build test
+        run: >
+          g++ -std=c++17 -Wall
+          -I test/arduino_shim -I src
+          test/test_kalman.cpp src/KalmanFilter_UWB.cpp
+          -o kf_test
+
+      - name: Run test
+        run: ./kf_test
