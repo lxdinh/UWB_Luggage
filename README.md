@@ -68,7 +68,7 @@ match your wiring:
 | Right motor PWM | 27 |
 | Right motor DIR | 14 |
 
-> ⚠️ **Power note.** The drive motors run off a 9 V pack that sags under load,
+> ⚠️ **Power note.** The drive motors run off a 9 V pack,
 > so PWM is intentionally capped (`60–220`, not `0–255`) to avoid browning out
 > the ESP32 rail. Keep motor and logic grounds common, and do not back-feed the
 > ESP32 from the motor supply.
