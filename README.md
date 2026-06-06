@@ -11,10 +11,7 @@
 **IEEE Fall 2024 Quarterly Project** · Oct–Dec 2024
 
 This repository is a focused code portfolio of the embedded-systems work:
-sensor fusion, closed-loop motor control, and the BLE IoT protocol. It runs on
-an ESP32 and ships with a **hardware-free bring-up mode** (a synthetic UWB
-source) so the full pipeline can be demonstrated on a bare board — no UWB tag
-or motors required.
+sensor fusion, closed-loop motor control, and the BLE IoT protocol.
 
 ## Architecture
 
