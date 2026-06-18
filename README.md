@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 > Core ESP32 / Arduino C++ firmware for a follow-me smart-luggage robot:
-> **UWB positioning → Kalman sensor fusion → PID motor control**, with a BLE
+> **UWB ranging → EKF sensor fusion → PID motor control**, with a BLE
 > telemetry/command link to a companion phone app.
 
 **IEEE Fall 2024 Quarterly Project** · Oct–Dec 2024
@@ -17,7 +17,7 @@ sensor fusion, closed-loop motor control, and the BLE IoT protocol.
 
 ```mermaid
 flowchart LR
-  UWB[UWB fixes] --> KF[Kalman filter<br/>pos / vel / heading]
+  UWB[UWB anchor ranges] --> KF[Extended Kalman filter<br/>pos / vel / heading]
   KF --> PID[PID control<br/>differential drive]
   PID --> HB[H-bridge to DC motors]
   KF --> BLE[BLE server]
@@ -30,7 +30,7 @@ Three independent modules, glued together in [`UWB_Luggage.ino`](UWB_Luggage.ino
 
 | Module | Files | Responsibility |
 | --- | --- | --- |
-| Sensor fusion | `src/KalmanFilter_UWB.{h,cpp}` | Constant-velocity Kalman filter; fuses noisy UWB fixes into a smoothed 2-D position, velocity, and heading estimate. |
+| Sensor fusion | `src/KalmanFilter_UWB.{h,cpp}` | Extended Kalman filter; fuses noisy UWB anchor ranges (nonlinear measurement) into a smoothed 2-D position, velocity, and heading estimate. |
 | Motor control | `src/MotorControl_PID.{h,cpp}` | Dual PID (range + heading) mixed to differential-drive PWM through an H-bridge. |
 | Connectivity | `src/BLE_Interface.{h,cpp}` | BLE GATT server: streams telemetry (notify) and receives nav commands (write). |
 
@@ -102,11 +102,12 @@ arduino-cli upload  --fqbn esp32:esp32:esp32 -p <PORT> .   # e.g. -p COM5 or /de
 
 ### Run without hardware
 
-`loop()` feeds a synthetic UWB sample (a slow Lissajous path) into the filter,
-so you can flash a bare ESP32, open the Serial Monitor at **115200 baud**, scan
-for `UWB_SmartLuggage` over BLE, and watch live telemetry — with no UWB tag or
-motors attached. Replace the synthetic block with your real tag driver when
-integrating hardware (the single seam is `kfUpdateFromUWB(x, y)`).
+`loop()` synthesizes noisy anchor **ranges** from a slow Lissajous ground-truth
+path and feeds them to the EKF, so you can flash a bare ESP32, open the Serial
+Monitor at **115200 baud**, scan for `UWB_SmartLuggage` over BLE, and watch live
+telemetry — with no UWB tag or motors attached. Replace the synthetic block with
+your real tag driver when integrating hardware (the single seam is
+`kfUpdateFromRanges(ranges, n)`, with anchor positions set via `kfSetAnchors()`).
 
 ## Tests
 
@@ -124,18 +125,20 @@ see the badge at the top.
 
 This is a portfolio extract, not turn-key firmware. Honest caveats:
 
-- The filter is a **linear, constant-velocity Kalman filter**. The module is
-  structured so it can be extended toward a full EKF with a nonlinear
-  motion/measurement model.
+- The filter is an **Extended Kalman Filter**: a linear constant-velocity
+  process model with a **nonlinear range measurement** (`z = ‖p − anchor‖`)
+  linearized via its Jacobian on every update. The motion model could be
+  extended further (e.g. a constant-turn-rate model or IMU prediction) for
+  sharper cornering.
 - PID gains and PWM scaling are tuned for a specific chassis and demo; re-tune
   for your hardware.
 - The UWB radio driver itself is out of scope here — the sketch exposes a single
-  `kfUpdateFromUWB(x, y)` seam where real tag readings plug in.
+  `kfUpdateFromRanges(ranges, n)` seam where real anchor-range readings plug in.
 - Pin assignments are placeholders.
 
 ## Roadmap
 
-- [ ] Real UWB tag driver (DW1000/DW3000) feeding `kfUpdateFromUWB()`
+- [ ] Real UWB tag driver (DW1000/DW3000) feeding `kfUpdateFromRanges()`
 - [ ] Encoder odometry as a second Kalman measurement (true multi-sensor fusion)
 - [ ] Obstacle-stop / bumper input
 - [ ] Companion app reference client
