@@ -1,11 +1,12 @@
-// Host-side unit test for the constant-velocity Kalman filter.
+// Host-side unit test for the range-based Extended Kalman Filter.
 //
 // Build & run (from repo root):
 //   g++ -std=c++17 -I test/arduino_shim -I src \
 //       test/test_kalman.cpp src/KalmanFilter_UWB.cpp -o kf_test && ./kf_test
 //
-// The filter is pure C++ math, so it can be validated off-target. We feed a
-// constant UWB fix and assert the estimate converges to it and settles.
+// The filter is pure C++ math, so it can be validated off-target. We place four
+// anchors around the origin, feed the (exact) ranges a stationary tag would
+// produce, and assert the estimate triangulates to that point and settles.
 #include <cmath>
 #include <cstdio>
 
@@ -22,26 +23,44 @@ static void expect_near(const char* what, float got, float want, float tol) {
 }
 
 int main() {
-  const float TARGET_X = 3.0f;
-  const float TARGET_Y = -2.0f;
+  // Anchors at the corners of a 6 m square centred on the origin.
+  const float anchors[] = {
+      -3.0f, -3.0f,
+       3.0f, -3.0f,
+       3.0f,  3.0f,
+      -3.0f,  3.0f,
+  };
+  const int NUM_ANCHORS = 4;
+
+  // Stationary tag somewhere inside the anchor square.
+  const float TARGET_X = 1.0f;
+  const float TARGET_Y = 0.5f;
 
   kfInit(0.05f);
-  // Drive the filter with a steady measurement for ~30 s of sim time.
-  for (int i = 0; i < 600; i++) {
+  kfSetAnchors(anchors, NUM_ANCHORS);
+
+  // Drive the filter with steady ranges for ~30 s of sim time.
+  for (int step = 0; step < 600; step++) {
+    float ranges[NUM_ANCHORS];
+    for (int i = 0; i < NUM_ANCHORS; i++) {
+      float dx = TARGET_X - anchors[2 * i];
+      float dy = TARGET_Y - anchors[2 * i + 1];
+      ranges[i] = std::sqrt(dx * dx + dy * dy);
+    }
     kfPredict();
-    kfUpdateFromUWB(TARGET_X, TARGET_Y);
+    kfUpdateFromRanges(ranges, NUM_ANCHORS);
   }
 
-  // Position estimate must converge to the (constant) measurement.
+  // Position estimate must triangulate to the true tag location.
   expect_near("converge x", kfGetX(), TARGET_X, 0.05f);
   expect_near("converge y", kfGetY(), TARGET_Y, 0.05f);
   // A stationary target => the inferred speed must settle near zero.
   expect_near("settle speed", kfGetSpeed(), 0.0f, 0.20f);
 
   if (g_failures == 0) {
-    std::printf("\nAll Kalman filter checks passed.\n");
+    std::printf("\nAll EKF checks passed.\n");
     return 0;
   }
-  std::printf("\n%d Kalman filter check(s) FAILED.\n", g_failures);
+  std::printf("\n%d EKF check(s) FAILED.\n", g_failures);
   return 1;
 }
